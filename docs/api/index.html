@@ -1,0 +1,208 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@coaty/binding.wamp - v2.0.0</title>
+	<meta name="description" content="Documentation for @coaty/binding.wamp - v2.0.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.json" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">@coaty/binding.wamp - v2.0.0</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-externals" checked />
+							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="globals.html">Globals</a>
+				</li>
+			</ul>
+			<h1>@coaty/binding.wamp - v2.0.0</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<a href="#coaty-js---wamp-communication-binding" id="coaty-js---wamp-communication-binding" style="color: inherit; text-decoration: none;">
+					<h1>Coaty JS - WAMP Communication Binding</h1>
+				</a>
+				<p><a href="https://coaty.io"><img src="https://img.shields.io/badge/Powered%20by-Coaty%202-FF8C00.svg" alt="Powered by Coaty 2"></a>
+					<a href="http://www.typescriptlang.org/"><img src="https://img.shields.io/badge/Source%20code-TypeScript-007ACC.svg" alt="TypeScript"></a>
+					<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+					<a href="https://conventionalcommits.org/"><img src="https://img.shields.io/badge/release-Conventional%20Commits-yellow.svg" alt="release"></a>
+				<a href="https://www.npmjs.com/package/@coaty/binding.wamp"><img src="https://badge.fury.io/js/%40coaty%2Fbinding.wamp.svg" alt="npm version"></a></p>
+				<a href="#table-of-contents" id="table-of-contents" style="color: inherit; text-decoration: none;">
+					<h2>Table of Contents</h2>
+				</a>
+				<ul>
+					<li><a href="#introduction">Introduction</a></li>
+					<li><a href="#how-to-use">How to use</a></li>
+					<li><a href="#contributing">Contributing</a></li>
+					<li><a href="#license">License</a></li>
+				</ul>
+				<a href="#introduction" id="introduction" style="color: inherit; text-decoration: none;">
+					<h2>Introduction</h2>
+				</a>
+				<p>This binding package provides a <a href="https://coaty.io">Coaty</a> communication binding
+					for transmitting Coaty communication events via the
+				<a href="https://wamp-proto.org/">WAMP</a> publish-subscribe messaging protocol.</p>
+				<p>This package comes with complete <a href="https://coatyio.github.io/binding.wamp.js/api/index.html">API
+				documentation</a>.</p>
+				<p>This package is considered the <em>reference implementation</em> for all
+					language-specific Coaty WAMP bindings. It includes the reference specification
+					of the <a href="https://coatyio.github.io/binding.wamp.js/man/communication-protocol/">Coaty WAMP communication
+					protocol</a>
+				which must be implemented by all WAMP bindings in order to be interoperable.</p>
+				<a href="#how-to-use" id="how-to-use" style="color: inherit; text-decoration: none;">
+					<h2>How to use</h2>
+				</a>
+				<p>You can install the latest version of this binding package in your Coaty
+				application as follows:</p>
+				<pre><code class="language-sh">npm install @coaty/binding.wamp</code></pre>
+				<p>This npm package targets Coaty projects using ECMAScript version <code>es5</code> and
+				module format <code>commonjs</code>. It runs in Node.js and in the browser.</p>
+				<p>Ensure to always install a binding version that is <em>compatible</em> with the
+					<code>@coaty/core</code> framework version you are using in your application, i.e. both
+				packages must have the same <em>major</em> version.</p>
+				<p>Next, declare the WAMP binding in your Coaty agent container configuration as
+				follows:</p>
+				<pre><code class="language-ts"><span class="hljs-keyword">import</span> { WampBinding } <span class="hljs-keyword">from</span> <span class="hljs-string">"@coaty/binding.wamp"</span>;
+
+<span class="hljs-keyword">const</span> configuration: Configuration = {
+    ...
+    communication: {
+        binding: WampBinding.withOptions({
+            routerUrl: ... ,
+            ...
+        }),
+        ...
+    },
+    ...
+};</code></pre>
+				<p>Available binding options are described in the <a href="https://coatyio.github.io/binding.wamp.js/api/interfaces/wampbindingoptions.html">API
+				documentation</a>.</p>
+				<a href="#contributing" id="contributing" style="color: inherit; text-decoration: none;">
+					<h2>Contributing</h2>
+				</a>
+				<p>If you like this binding, please consider &#x2605; starring <a href="https://github.com/coatyio/binding.wamp.js">the project on
+					github</a>. Contributions are welcome
+				and appreciated.</p>
+				<p>The recommended practice described in the <a href="https://github.com/coatyio/coaty-js/blob/master/CONTRIBUTING.md">contribution
+					guidelines</a> of
+				the Coaty JS framework also applies here.</p>
+				<p>To release a new version of this package, follow these steps:</p>
+				<ol>
+					<li><code>npm run cut-release</code> - prepare a new release, including automatic
+					versioning, documentation generation, conventional changelog, and tagging.</li>
+					<li><code>npm run push-release</code> - push the prepared release to the remote git repo</li>
+					<li><code>npm run publish-release</code> - publish the package on npm registry.</li>
+				</ol>
+				<a href="#license" id="license" style="color: inherit; text-decoration: none;">
+					<h2>License</h2>
+				</a>
+				<p>Code and documentation copyright 2020 Siemens AG.</p>
+				<p>Code is licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p>
+				<p>Documentation is licensed under a
+				<a href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="globals.html"><em>Globals</em></a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+					<li class=" tsd-kind-class">
+						<a href="classes/wampbinding.html" class="tsd-kind-icon">Wamp<wbr>Binding</a>
+					</li>
+					<li class=" tsd-kind-class">
+						<a href="classes/wamptopic.html" class="tsd-kind-icon">Wamp<wbr>Topic</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/publicationitem.html" class="tsd-kind-icon">Publication<wbr>Item</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/subscriptionitem.html" class="tsd-kind-icon">Subscription<wbr>Item</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wampbindingoptions.html" class="tsd-kind-icon">Wamp<wbr>Binding<wbr>Options</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited constructor</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static method</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="assets/js/search.js"><' + '/script>');</script>
+</body>
+</html>
