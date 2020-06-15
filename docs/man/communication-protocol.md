@@ -226,8 +226,11 @@ include the CorrelationID of the correlated request.
 ## Message Payloads
 
 Message payloads for the Coaty events described above consist of attribute-value
-pairs in JavaScript Object Notation format ([JSON](http://www.json.org), see [RFC
-4627](https://www.ietf.org/rfc/rfc4627.txt)) encoded as a UTF-8 string.
+pairs in JavaScript Object Notation format ([JSON](http://www.json.org), see
+[RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)).
+
+Message payloads **must** be serialized with the MessagePack v5 serializer (not with
+the JSON serializer) as this serializer can also serialize raw binary data.
 
 > **Note**: Payloads of Raw events and IO value events with raw data do not
 > conform to this specification. They are published as binary data encoded in
