@@ -305,31 +305,43 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
 
         // Fired on successful (re)-connection. The passed-in session is created anew each time.
         this._connection.onopen = (session, details) => {
-            this._sessionIdLogItem = `[${session.id}] `;
-            this.log(CommunicationBindingLogLevel.info, "Connection opened on protocol ",
-                this._connection.transport.info.protocol, " to ", this._connection.transport.info.url);
-            if (this.options.logLevel === CommunicationBindingLogLevel.debug) {
-                this.log(CommunicationBindingLogLevel.debug, "Session opened on realm '", session.realm,
-                    "' with details: ", JSON.stringify(details));
-            } else {
-                this.log(CommunicationBindingLogLevel.info, "Session opened on realm '", session.realm, "'");
+            try {
+                this._sessionIdLogItem = `[${session.id}] `;
+                this.log(CommunicationBindingLogLevel.info, "Connection opened on protocol ",
+                    this._connection.transport.info.protocol, " to ", this._connection.transport.info.url);
+                if (this.options.logLevel === CommunicationBindingLogLevel.debug) {
+                    this.log(CommunicationBindingLogLevel.debug, "Session opened on realm '", session.realm,
+                        "' with details: ", JSON.stringify(details));
+                } else {
+                    this.log(CommunicationBindingLogLevel.info, "Session opened on realm '", session.realm, "'");
+                }
+                this.emit("communicationState", CommunicationState.Online);
+
+                // Ensure testaments are announced to router.
+                this._addSessionTestaments(session);
+
+                // Ensure all issued subscription items are (re)subscribed.
+                this._subscribeItems(this._issuedSubscriptionItems);
+
+                // Ensure join events are published first on (re)connection in the given order.
+                const joinEvents = this._joinOptions.joinEvents;
+                for (let i = joinEvents.length - 1; i >= 0; i--) {
+                    this._addPublicationItem(joinEvents[i], true, true);
+                }
+
+                // Start emitting all deferred offline publications.
+                this._drainPublications();
+            } catch (error) {
+                // Websocket library can throw "Error: not opened" in case the connection is
+                // just connected and session is opened, and one of the synchronous
+                // initialization functions (e.g. adding testaments) are ongoing, but
+                // connection.close() by unjoin method has been invoked in the meantime. This
+                // can happen e.g. on Container.resolve(...).shutdown(). Note that afterwards,
+                // connection.onclose is never called.
+                // 
+                // This kind of error should not be dispatched as a user_error but silently ignored.
+                this._reset();
             }
-            this.emit("communicationState", CommunicationState.Online);
-
-            // Ensure testaments are announced to router.
-            this._addSessionTestaments();
-
-            // Ensure all issued subscription items are (re)subscribed.
-            this._subscribeItems(this._issuedSubscriptionItems);
-
-            // Ensure join events are published first on (re)connection in the given order.
-            const joinEvents = this._joinOptions.joinEvents;
-            for (let i = joinEvents.length - 1; i >= 0; i--) {
-                this._addPublicationItem(joinEvents[i], true, true);
-            }
-
-            // Start emitting all deferred offline publications.
-            this._drainPublications();
         };
 
         // Fired when the connection has been closed explicitly, was lost or
@@ -342,19 +354,20 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
                     break;
                 case "lost":
                     this.log(CommunicationBindingLogLevel.info, "Connection closed: lost");
+                    // Keep issued publications and subscriptions for retry.
                     this._resetSession();
                     break;
                 case "unreachable":
-                    this.log(CommunicationBindingLogLevel.info, "Session closed: routerUrl invalid or unreachable");
-                    this._resetSession();
+                    this.log(CommunicationBindingLogLevel.info, "Connection closed: routerUrl invalid or unreachable");
+                    this._reset();
                     break;
                 case "unsupported":
                     this.log(CommunicationBindingLogLevel.info, "Connection closed: no WebSocket transport could be created");
-                    this._resetSession();
+                    this._reset();
                     break;
                 default:
                     this.log(CommunicationBindingLogLevel.info, "Connection closed: ", reason);
-                    this._resetSession();
+                    this._reset();
                     break;
             }
 
@@ -368,18 +381,23 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
     }
 
     protected onUnjoin() {
-        if (!this._connection) {
-            // In Initialized state dispose allocated resources.
+        if (!this._connection?.isConnected) {
             this._reset();
-        } else {
-            // No need to explicitely unsubscribe issued subscriptions as the WAMP router
-            // session will be destroyed. No need to publish the Unjoin event as testaments
-            // have been set up in the router so that they are also executed when the WAMP
-            // session is detached by closing the connection normally. 
-            this._connection.close();
+            return Promise.resolve();
         }
 
-        return Promise.resolve();
+        // No need to explicitely unsubscribe issued subscriptions as the WAMP router
+        // session will be destroyed. No need to publish the Unjoin event as testaments
+        // have been set up in the router so that they are also executed when the WAMP
+        // session is detached by closing the connection normally.
+        this._connection.close();
+
+        // Delay resolving returned promise on the next iteration of the event loop so
+        // that log messages and errors emitted by the binding's event emitter are
+        // dispatched.
+        return new Promise<void>(resolve => {
+            setImmediate(() => resolve());
+        });
     }
 
     protected onPublish(eventLike: CommunicationEventLike) {
@@ -429,7 +447,7 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
 
     private _error(error: any) {
         if (typeof error === "object" && !(error instanceof Error)) {
-            // Stringify autobahn errors caugth in rejected promises to make
+            // Stringify autobahn errors caught in rejected promises to make
             // them inspectable in the log output.
             return JSON.stringify(error);
         }
@@ -486,18 +504,18 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
         ];
     }
 
-    private _addSessionTestaments() {
+    private _addSessionTestaments(session) {
         const unjoinEventLike = this._joinOptions.unjoinEvent;
         const topic = this._getTopicFor(unjoinEventLike);
         const payload = unjoinEventLike.data;
 
         // Add testament for when the WAMP transport is lost.
-        this._connection.session.call("wamp.session.add_testament", [topic, [], payload], { scope: "destroyed" })
+        session.call("wamp.session.add_testament", [topic, [], payload], { scope: "destroyed" })
             .then(id => this.log(CommunicationBindingLogLevel.debug, "Added testament for destroyed scope: ", id))
             .catch(err => this.log(CommunicationBindingLogLevel.error, "Add testament failed for destroyed scope: ", this._error(err)));
 
         // Add testament for when the WAMP session is left (see unjoin()).
-        this._connection.session.call("wamp.session.add_testament", [topic, [], payload], { scope: "detached" })
+        session.call("wamp.session.add_testament", [topic, [], payload], { scope: "detached" })
             .then(id => this.log(CommunicationBindingLogLevel.debug, "Added testament for detached scope: ", id))
             .catch(err => this.log(CommunicationBindingLogLevel.error, "Add testament failed for detached scope: ", this._error(err)));
     }
