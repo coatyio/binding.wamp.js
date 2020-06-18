@@ -179,7 +179,7 @@ structure with pattern-based *wildcard* subscription option enabled:
 
 ```
 // Subscription for one-way events without or with cross-namespacing
-<ProtocolName>.<ProtocolVersion>.<Namespace>/<Event>/+
+<ProtocolName>.<ProtocolVersion>.<Namespace>/<Event>.
 <ProtocolName>.<ProtocolVersion>..<Event>.
 
 // Subscription for two-way request events without or with cross-namespacing
