@@ -643,11 +643,15 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
 
         if (index === -1) {
             this._issuedSubscriptionItems.push(item);
+            this._subscribeItems(item);
         } else {
+            const existingSubscription = this._issuedSubscriptionItems[index];
             this._issuedSubscriptionItems[index] = item;
-        }
+            this._subscribeItems(item);
 
-        this._subscribeItems(item);
+            // Unsubscribe the existing subscription handler to avoid multiple event dispatches.
+            this._unsubscribeItems(existingSubscription);
+        }
     }
 
     private _removeSubscriptionItem(eventLike: CommunicationEventLike) {
@@ -659,22 +663,12 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
             return;
         }
 
-        const item = this._issuedSubscriptionItems.splice(index, 1)[0];
+        const item = this._issuedSubscriptionItems.splice(index, 1);
 
-        // For Raw and external IoValue events we can only unsubscribe the item if there
-        // is no other subscription issued on the same (maybe pattern-based) topic
-        // filter.
-        let otherEventType: CommunicationEventType;
-        if (eventLike.eventType === CommunicationEventType.Raw) {
-            otherEventType = CommunicationEventType.IoValue;
-        } else if (eventLike.eventType === CommunicationEventType.IoValue) {
-            otherEventType = CommunicationEventType.Raw;
-        }
-        if (otherEventType !== undefined &&
-            this._issuedSubscriptionItems.some(this._subscriptionItemPredicate(otherEventType, topicFilter, match))) {
-            return;
-        }
-
+        // As each subscription item has its own WAMP subscription ID, we can safely
+        // unsubscribe an item with a topic which is still subscribed by another item.
+        // This can happen for Raw and external IoValue events sharing the same (maybe
+        // pattern-based) subscription topic.
         this._unsubscribeItems(item);
     }
 
@@ -712,10 +706,11 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
 
     private _unsubscribeItems(items: SubscriptionItem | SubscriptionItem[]) {
         const unsubscribe = (item: SubscriptionItem) => {
-            //  If no session is open, items don't need to be unsubscribed.
-            if (this._connection?.isOpen && item.subscription !== undefined) {
-                this._connection.session.unsubscribe(item.subscription)
+            //  Unsubscribe to perform side effects in WAMP client even if session is not open.
+            if (item.subscription !== undefined) {
+                this._connection?.session.unsubscribe(item.subscription)
                     .then(gone => {
+                        // gone is false if handlers are still left on the subscription topic.
                         if (this.options.logLevel === CommunicationBindingLogLevel.debug) {
                             this.log(CommunicationBindingLogLevel.debug, "Unsubscribed on ", item.topic,
                                 " with ", JSON.stringify(item.subscription.options));
@@ -723,7 +718,8 @@ export class WampBinding extends CommunicationBinding<WampBindingOptions> {
                         delete item.subscription;
                     })
                     .catch(err => {
-                        this.log(CommunicationBindingLogLevel.error, "Unsubscribe failed on ", item.topic, " error: ", this._error(err));
+                        // Throws if session is not open or subscription not active.
+                        this.log(CommunicationBindingLogLevel.debug, "Unsubscribe failed on ", item.topic, " error: ", this._error(err));
                         delete item.subscription;
                     });
             }
