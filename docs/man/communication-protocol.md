@@ -14,6 +14,7 @@ title: Coaty WAMP Communication Protocol
 ## Table of Contents
 
 * [Introduction](#introduction)
+* [Requirements](#requirements)
 * [Topic Structure](#topic-structure)
 * [Topic Filters](#topic-filters)
 * [Message Payloads](#message-payloads)
@@ -33,6 +34,8 @@ WAMP (Web Application Messaging Protocol) publish-subscribe messaging protocol.
 The format of WAMP topic names and payloads conforms to the [WAMP
 Protocol](https://wamp-proto.org/).
 
+## Requirements
+
 General requirements for WAMP bindings are as follows:
 
 * The binding should be compatible with any WAMP router (e.g.
@@ -46,9 +49,16 @@ General requirements for WAMP bindings are as follows:
   * MessagePack serialization
 * Always connect to the WAMP router with a clean WAMP session without requesting
   event history on each (re)-connection.
+* Emit communication state `Online` on connection to the WAMP router, and
+  `Offline` on disconnection.
 * If connection is broken, defer publications until next reconnection.
 * If connection is broken, support automatic resubscription of all subscribed
   topics on every reconnection.
+* On successful (re)connection, add two session testaments to router to be
+  published for the unjoin event, one for scope `destroyed`, one for scope
+  `detached`.
+* On successful (re)connection, join events must be published first in the given
+  order.
 
 ## Topic Structure
 
@@ -78,11 +88,10 @@ as specified in [RFC 4122](https://www.ietf.org/rfc/rfc4122.txt). In the string
 representation of a UUID the hexadecimal values "a" through "f" are output as
 lower case characters.
 
-> **Note**: Raw events and external IO value events do not conform to this topic
-> specification. They are published and subscribed on an application-specific
-> topic string, which can be any valid WAMP topic that must not start with
-> `<ProtocolName>.`. Inbound WAMP messages for Raw subscriptions that match a
-> topic starting with `<ProtocolName>.` must be discarded.
+> **Note**: Raw events and external IoValue events do not conform to this topic
+> structure. They are published and subscribed on an application-specific topic
+> string, which can be any valid WAMP topic that must not start with
+> `<ProtocolName>.`.
 
 A topic name for publication is composed as follows:
 
@@ -123,42 +132,38 @@ used:
 When publishing an Advertise event the Event topic component **must** include a
 filter of the form: `ADV<filter>`. The filter must not be empty. It must not
 contain the characters `NULL (U+0000)`, `# (U+0023)`, `+ (U+002B)`, and `/
-(U+002F)`. Framework implementations specify the core type (`ADV:<coreType>`) or
-the object type (`ADV::<objectType>`) of the advertised object as filter in
+(U+002F)`. Framework implementations specify the core type (`ADV<coreType>`) or
+the object type (`ADV:<objectType>`) of the advertised object as filter in
 order to allow subscribers to listen just to objects of a specific core or
-object type. To support subscriptions on both types of filters every Advertise
-event should be published twice, once for the core type and once for the object
-type of the object to be advertised.
+object type.
 
 When publishing an Update event the Event topic component **must** include a
-filter of the form: `UPD:<filter>`. The filter must not be empty. It must not
+filter of the form: `UPD<filter>`. The filter must not be empty. It must not
 contain the characters `NULL (U+0000)`, `# (U+0023)`, `+ (U+002B)`, and `/
-(U+002F)`. Framework implementations specify the core type (`UPD:<coreType>`) or
-the object type (`UPD::<objectType>`) of the updated object as filter in order
+(U+002F)`. Framework implementations specify the core type (`UPD<coreType>`) or
+the object type (`UPD:<objectType>`) of the updated object as filter in order
 to allow subscribers to listen just to objects of a specific core or object
-type. To support subscriptions on both types of filters every Update event
-should be published twice, once for the core type and once for the object type
-of the object to be updated.
+type.
 
-When publishing a Channel event the Event topic component **must** include a channel
-identifier of the form: `CHN:<channelId>`. The channel ID must not be empty. It
-must not contain the characters `NULL (U+0000)`, `# (U+0023)`, `+ (U+002B)`, and
-`/ (U+002F)`.
+When publishing a Channel event the Event topic component **must** include a
+channel identifier of the form: `CHN<channelId>`. The channel ID must not be
+empty. It must not contain the characters `NULL (U+0000)`, `# (U+0023)`, `+
+(U+002B)`, and `/ (U+002F)`.
 
-When publishing a Call event the Event topic component **must** include an operation
-name of the form: `CLL:<operationname>`. The operation name must not be empty.
-It must not contain the characters `NULL (U+0000)`, `# (U+0023)`, `+ (U+002B)`,
-and `/ (U+002F)`.
+When publishing a Call event the Event topic component **must** include an
+operation name of the form: `CLL<operationname>`. The operation name must not
+be empty. It must not contain the characters `NULL (U+0000)`, `# (U+0023)`, `+
+(U+002B)`, and `/ (U+002F)`.
 
-When publishing an Associate event the Event topic component **must** include an IO
-context name of the form: `ASC:<contextName>`. The context name must not be
+When publishing an Associate event the Event topic component **must** include an
+IO context name of the form: `ASC<contextName>`. The context name must not be
 empty. It must not contain the characters `NULL (U+0000)`, `# (U+0023)`, `+
 (U+002B)`, and `/ (U+002F)`.
 
 For any request-response event pattern the receiving party must respond with an
 outbound message topic containing the original CorrelationID of the incoming
-message topic. Note that the Event topic component of response events **must never**
-include a filter field.
+message topic. Note that the Event topic component of response events **must
+never** include a filter field.
 
 As the Unicode character `Dot (U+00B7)` and whitespace characters are not
 allowed inside WAMP topic URI components, both event filter and namespace
@@ -206,19 +211,19 @@ When subscribing to a response event, the Event topic component **must not**
 include an event filter.
 
 When subscribing to an Advertise event, the Event topic component **must**
-include the Advertise filter: `ADV:<filter>` or `ADV::<filter>`.
+include the Advertise filter: `ADV<filter>`.
 
 When subscribing to a Channel event, the Event topic component **must** include
-the channel ID: `CHN:<channelId>`.
+the channel ID: `CHN<channelId>`.
 
 When subscribing to an Update event, the Event topic component **must** include
-the Update filter: `UPD:<filter>` or `UPD::<filter>`.
+the Update filter: `UPD<filter>`.
 
 When subscribing to a Call event, the Event topic component **must** include the
-operation name: `CLL:<operationname>`.
+operation name: `CLL<operationname>`.
 
 When subscribing to an Associate event, the Event topic component **must**
-include the IO context name: `ASC:<contextName>`.
+include the IO context name: `ASC<contextName>`.
 
 When subscribing to a response event, the CorrelationID topic component **must**
 include the CorrelationID of the correlated request.
@@ -229,12 +234,15 @@ Message payloads for the Coaty events described above consist of attribute-value
 pairs in JavaScript Object Notation format ([JSON](http://www.json.org), see
 [RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)).
 
-Message payloads **must** be serialized with the MessagePack v5 serializer (not with
-the JSON serializer) as this serializer can also serialize raw binary data.
+Message payloads for Raw and IoValue events **must** be published on WAMP
+`Arguments` as an array with one element containing the raw data; all other
+events **must** be published on WAMP `Keyword Arguments` as JSON object data
+directly.
 
-> **Note**: Payloads of Raw events and IO value events with raw data do not
-> conform to this specification. They are published as binary data encoded in
-> any application-specific format.
+Message payloads **must** be serialized with the WAMP MessagePack v5 serializer
+(not with the JSON serializer). This serializer can also directly serialize
+binary data of Raw events and raw IoValue events. Event data of these events
+consists of a byte array encoded in any application-specific format.
 
 ---
 Copyright (c) 2020 Siemens AG. This work is licensed under a
